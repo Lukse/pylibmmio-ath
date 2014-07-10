@@ -1,7 +1,8 @@
 /*
- * Copyright (C) 2012 Žilvinas Valinskas
+ * Copyright (C) 2012 Žilvinas Valinskas, Saulius Lukšė
  * See LICENSE for more information.
  */
+
 #ifndef __UTILS_H__
 #define __UTILS_H__
 

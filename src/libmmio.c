@@ -248,3 +248,14 @@ void mmiof_close(void * iomem)
 	}
 }
 
+
+void * test_get_buffer(void)
+{	
+	return "1234567890";
+}
+
+void test_put_buffer(char * buffer)
+{
+	printf("C prints: %s\n", buffer);
+}
+

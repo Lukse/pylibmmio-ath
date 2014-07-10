@@ -1,7 +1,8 @@
 /*
- * Copyright (C) 2012 Žilvinas Valinskas
+ * Copyright (C) 2012 Žilvinas Valinskas, Saulius Lukšė 
  * See LICENSE for more information.
  */
+
 #ifndef __MMIO_H__
 #define __MMIO_H__
 
@@ -24,5 +25,8 @@ void mmio_hexdump(const struct mmio *io, size_t length, size_t flags);
 
 uint32_t mmio_readl(const struct mmio *io, unsigned int offset);
 void mmio_writel(const struct mmio *io, unsigned int offset, uint32_t value);
+
+void * test_get_buffer(void);
+void test_put_buffer(char * buffer);
 
 #endif //__MMIO_H__
