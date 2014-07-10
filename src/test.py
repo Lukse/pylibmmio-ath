@@ -39,20 +39,106 @@ import time
 sys.path.append("/usr/sbin")
 import libmmio
 
-GPIO_BASE					= 0x18040000
-GPIO_OE						= 0x00 		# General Purpose I/O Output Enable page 65
-GPIO_IN						= 0x04 		# General Purpose I/O Input Value page 65
-GPIO_OUT					= 0x08 		# General Purpose I/O Output Value page 65
-GPIO_SET					= 0x0C 		# General Purpose I/O Bit Set page 66
-GPIO_CLEAR					= 0x10 		# General Purpose I/O Per Bit Clear page 66
-GPIO_INT					= 0x14 		# General Purpose I/O Interrupt Enable page 66
-GPIO_INT_TYPE				= 0x18 		# General Purpose I/O Interrupt Type page 66
-GPIO_INT_POLARITY			= 0x1C 		# General Purpose I/O Interrupt Polarity page 66
-GPIO_INT_PENDING			= 0x20 		# General Purpose I/O Interrupt Pending page 67
-GPIO_INT_MASK				= 0x24 		# General Purpose I/O Interrupt Mask page 67
-GPIO_FUNCTION_1				= 0x28 		# General Purpose I/O Function page 67
-GPIO_IN_ETH_SWITCH_LED		= 0x2C 		# General Purpose I/O Input Value page 68
-GPIO_FUNCTION_2				= 0x30 		# Extended GPIO Function Control page 69
+class CARAMBOLA2_GPIO:
+	def __init__(self):
+		self.GPIO_BASE					= 0x18040000
+		self.GPIO_OE					= 0x00 		# General Purpose I/O Output Enable page 65
+		self.GPIO_IN					= 0x04 		# General Purpose I/O Input Value page 65
+		self.GPIO_OUT					= 0x08 		# General Purpose I/O Output Value page 65
+		self.GPIO_SET					= 0x0C 		# General Purpose I/O Bit Set page 66
+		self.GPIO_CLEAR					= 0x10 		# General Purpose I/O Per Bit Clear page 66
+		self.GPIO_INT					= 0x14 		# General Purpose I/O Interrupt Enable page 66
+		self.GPIO_INT_TYPE				= 0x18 		# General Purpose I/O Interrupt Type page 66
+		self.GPIO_INT_POLARITY			= 0x1C 		# General Purpose I/O Interrupt Polarity page 66
+		self.GPIO_INT_PENDING			= 0x20 		# General Purpose I/O Interrupt Pending page 67
+		self.GPIO_INT_MASK				= 0x24 		# General Purpose I/O Interrupt Mask page 67
+		self.GPIO_FUNCTION_1			= 0x28 		# General Purpose I/O Function page 67
+		self.GPIO_IN_ETH_SWITCH_LED		= 0x2C 		# General Purpose I/O Input Value page 68
+		self.GPIO_FUNCTION_2			= 0x30 		# Extended GPIO Function Control page 69
+
+		INPUT = 0
+		OUTPUT = 1
+
+		self.iomem = None
+
+		ALL_PINS = [11, 12, 18, 19, 20, 21, 22, 23]
+
+		#ALL_GPIO = 1<<11 | 1<<12 | 1<<18 | 1<<19 | 1<<20 | 1<<21 | 1<<22 | 1<<23
+		self.iomem = libmmio.mmiof_init(self.GPIO_BASE) 				# GPIO base address
+		pin_status = libmmio.mmiof_read(self.iomem, self.GPIO_OE)
+		
+		# set all pins as input
+		for pin in ALL_PINS:
+			pin_status  &= ~(1 << pin);
+
+		libmmio.mmiof_write(self.iomem, self.GPIO_OE, pin_status) 		# Set gpio direction
+
+
+	def pin_direction(self, bit, direction):
+		if 11 <= bit <= 23:
+			pin_status = libmmio.mmiof_read(self.iomem, self.GPIO_OE)
+
+			if direction == 1:
+				pin_status |= 1 << bit;
+			
+			elif direction == 0:
+				pin_status  &= ~(1 << bit);				
+
+			libmmio.mmiof_write(self.iomem, self.GPIO_OE, pin_status)
+
+		else:
+			raise Exception("PIN number not in valid range.")
+
+		
+	def pin_set(self, bit):
+		if 11 <= bit <= 23:
+			libmmio.mmiof_write(self.iomem, self.GPIO_SET, 1<<bit)
+		else:
+			raise Exception("PIN number not in valid range.")
+
+
+	def pin_clear(self, bit):
+		if 11 <= bit <= 23:
+			libmmio.mmiof_write(self.iomem, self.GPIO_CLEAR, 1<<bit)
+		else:
+			raise Exception("PIN number not in valid range.")
+
+
+	def pin_read(self, bit):
+		if 11 <= bit <= 23:
+			pin_status = libmmio.mmiof_read(self.iomem, self.GPIO_IN)
+			if (pin_status & 1<<bit) != 0:
+				return True
+			else:
+				return False
+		else:
+			raise Exception("PIN number not in valid range.")
+
+
+
+
+
+
+
+
+
+
+gpio = CARAMBOLA2_GPIO()
+
+gpio.pin_direction(11, 1)
+
+while True:
+	gpio.pin_set(11) 
+	time.sleep(0.1)
+
+	gpio.pin_clear(11) 
+	time.sleep(0.1)
+
+	print gpio.pin_read(12)
+
+
+'''
+
 
 ALL_GPIO = 1<<11 | 1<<12 | 1<<18 | 1<<19 | 1<<20 | 1<<21 | 1<<22 | 1<<23
 
@@ -76,3 +162,4 @@ while True:
 	libmmio.mmiof_write(iomem, GPIO_CLEAR, ALL_GPIO) 	# Clear GPIO registers
 	time.sleep(0.1) 
 
+'''
