@@ -4,6 +4,7 @@ sys.path.append("/usr/sbin") # this is where binary library and python wrapper r
 import hwlibcara2
 
 
+'''
 # ---------
 # GPIO test
 # ---------
@@ -11,12 +12,15 @@ gpio = hwlibcara2.GPIO()
 gpio.pin_direction(12, gpio.OUTPUT)
 gpio.pin_set(12)
 print gpio.pin_read(11) # push button near USB connector
+'''
 
 
+'''
 # --------
 # I2C test
+# PCF8575
 # --------
-i2c = hwlibcara2.I2C(frequency=0)
+i2c = hwlibcara2.I2C()
 
 # scan
 for i in xrange(255):
@@ -41,25 +45,27 @@ for i in xrange(255):
 #i2c.write(0x55)
 #i2c.write(0xAA)
 #i2c.stop()
+'''
 
-i2c.start()
-i2c.write(0xE0)
-i2c.write(0x00)
-i2c.write(0x51)
-i2c.stop()
 
-time.sleep(0.2)
+# --------
+# SPI test
+# MLX90316
+# --------
+spi = hwlibcara2.SPI()
 
-i2c.start()
-i2c.write(0xE0)
-i2c.write(0x02)
-i2c.stop()
+while True:
+	spi.start()
+	spi.transfer(0xAA)
+	spi.transfer(0xFF)
+	d0 = spi.transfer(0xFF)
+	d1 = spi.transfer(0xFF)
+	d2 = spi.transfer(0xFF)
+	d3 = spi.transfer(0xFF)
+	spi.transfer(0xFF)
+	spi.transfer(0xFF)
+	spi.transfer(0xFF)
+	spi.transfer(0xFF)
+	spi.stop()
 
-i2c.start()
-i2c.write(0xE1)
-d1 = i2c.read(True)
-d2 = i2c.read(False)
-i2c.stop()
-
-print d1, d2
-
+	print "%3.2f" % ((d0*0x100 + d1) * 359.999 / 0xFFFF)

@@ -211,3 +211,66 @@ class I2C:
 		self.gpio.pin_clear(self.scl_pin)
 		time.sleep(self.sleep)
 		return d
+
+
+class SPI:
+	def __init__(self, MOSI_pin=19, MISO_pin=19, CLOCK_pin=18, SS_pin=20, frequency=0):
+		self.gpio = GPIO()
+
+		self.MOSI_pin=MOSI_pin
+		self.MISO_pin=MISO_pin
+		self.CLOCK_pin=CLOCK_pin
+		self.SS_pin=SS_pin
+		self.sleep = frequency
+
+		self.gpio.pin_set(self.MOSI_pin) 
+		self.gpio.pin_set(self.MISO_pin) 
+		self.gpio.pin_set(self.CLOCK_pin) 
+		self.gpio.pin_set(self.SS_pin) 
+
+		self.gpio.pin_direction(self.MISO_pin, self.gpio.INPUT)
+		self.gpio.pin_direction(self.MOSI_pin, self.gpio.OUTPUT)
+		self.gpio.pin_direction(self.CLOCK_pin, self.gpio.OUTPUT)
+		self.gpio.pin_direction(self.SS_pin, self.gpio.OUTPUT)
+
+	def start(self):
+		self.gpio.pin_clear(self.SS_pin)
+		time.sleep(self.sleep)
+
+
+	def stop(self):
+		time.sleep(self.sleep)
+		self.gpio.pin_set(self.SS_pin)
+
+
+	def transfer(self, data):
+		# CPHA = 1  even clock changes are used to sample the data 
+		# CPOL = 0  active-Hi clock 
+		
+		read = 0
+		for x in xrange(8):
+			time.sleep(self.sleep)
+			self.gpio.pin_direction(self.MOSI_pin, self.gpio.OUTPUT) # in this case it's single line comunication
+			time.sleep(self.sleep)
+
+			if data & 0x80:
+				self.gpio.pin_set(self.MOSI_pin) 
+			else:
+				self.gpio.pin_clear(self.MOSI_pin) 
+			
+			data = data << 1
+
+			time.sleep(self.sleep)
+			self.gpio.pin_clear(self.CLOCK_pin) 
+			time.sleep(self.sleep)
+			
+			self.gpio.pin_direction(self.MISO_pin, self.gpio.INPUT) # in this case it's single line comunication
+			time.sleep(self.sleep)
+			self.gpio.pin_set(self.CLOCK_pin) 			
+			time.sleep(self.sleep)
+
+			read = read << 1
+			if(self.gpio.pin_read(self.MISO_pin)):
+				read = read | 1
+
+		return read
