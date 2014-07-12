@@ -40,79 +40,43 @@ import libmmio
 
 class GPIO:
 	def __init__(self):
-		self.GPIO_BASE					= 0x18040000
-		self.GPIO_OE					= 0x00 		# General Purpose I/O Output Enable page 65
-		self.GPIO_IN					= 0x04 		# General Purpose I/O Input Value page 65
-		self.GPIO_OUT					= 0x08 		# General Purpose I/O Output Value page 65
-		self.GPIO_SET					= 0x0C 		# General Purpose I/O Bit Set page 66
-		self.GPIO_CLEAR					= 0x10 		# General Purpose I/O Per Bit Clear page 66
-		self.GPIO_INT					= 0x14 		# General Purpose I/O Interrupt Enable page 66
-		self.GPIO_INT_TYPE				= 0x18 		# General Purpose I/O Interrupt Type page 66
-		self.GPIO_INT_POLARITY			= 0x1C 		# General Purpose I/O Interrupt Polarity page 66
-		self.GPIO_INT_PENDING			= 0x20 		# General Purpose I/O Interrupt Pending page 67
-		self.GPIO_INT_MASK				= 0x24 		# General Purpose I/O Interrupt Mask page 67
-		self.GPIO_FUNCTION_1			= 0x28 		# General Purpose I/O Function page 67
-		self.GPIO_IN_ETH_SWITCH_LED		= 0x2C 		# General Purpose I/O Input Value page 68
-		self.GPIO_FUNCTION_2			= 0x30 		# Extended GPIO Function Control page 69
-
-		self.INPUT = 0
-		self.OUTPUT = 1
-
 		self.iomem = None
 
 		ALL_PINS = [11, 12, 18, 19, 20, 21, 22, 23]
 
-		#ALL_GPIO = 1<<11 | 1<<12 | 1<<18 | 1<<19 | 1<<20 | 1<<21 | 1<<22 | 1<<23
-		self.iomem = libmmio.mmiof_init(self.GPIO_BASE) 				# GPIO base address
-		pin_status = libmmio.mmiof_read(self.iomem, self.GPIO_OE)
+		self.iomem = libmmio.mmiof_init(libmmio.GPIO_BASE) 				# GPIO base address
+		pin_status = libmmio.mmiof_read(self.iomem, libmmio.GPIO_OE)
 		
 		# set all pins as input
 		for pin in ALL_PINS:
-			pin_status  &= ~(1 << pin);
+			self.pin_direction(pin, libmmio.INPUT)
+		libmmio.mmiof_write(self.iomem, libmmio.GPIO_OE, pin_status) 		# Set gpio direction
 
-		libmmio.mmiof_write(self.iomem, self.GPIO_OE, pin_status) 		# Set gpio direction
-		libmmio.mmiof_write(self.iomem, self.GPIO_FUNCTION_2, 1<<8 | 1<<9) 	# Disables the WPS input function on GPIO12, Disables Jumpstart input function on GPIO11
+		# Disable the WPS input function on GPIO12, Disables Jumpstart input function on GPIO11
+		libmmio.mmiof_write(self.iomem, libmmio.GPIO_FUNCTION_2, 1<<8 | 1<<9) 	
 
 
 	def pin_direction(self, bit, direction):
-		if 11 <= bit <= 23:
-			pin_status = libmmio.mmiof_read(self.iomem, self.GPIO_OE)
-
-			if direction == 1:
-				pin_status |= 1 << bit;
-			
-			elif direction == 0:
-				pin_status  &= ~(1 << bit);				
-
-			libmmio.mmiof_write(self.iomem, self.GPIO_OE, pin_status)
-
-		else:
-			raise Exception("PIN number not in valid range.")
+		# TODO: range checking
+		libmmio.pin_direction(self.iomem, bit, direction)
 
 		
 	def pin_set(self, bit):
-		if 11 <= bit <= 23:
-			libmmio.mmiof_write(self.iomem, self.GPIO_SET, 1<<bit)
-		else:
-			raise Exception("PIN number not in valid range.")
+		# TODO: range checking
+		libmmio.pin_set(self.iomem, bit)
 
 
 	def pin_clear(self, bit):
-		if 11 <= bit <= 23:
-			libmmio.mmiof_write(self.iomem, self.GPIO_CLEAR, 1<<bit)
-		else:
-			raise Exception("PIN number not in valid range.")
+		# TODO: range checking
+		libmmio.pin_clear(self.iomem, bit)
 
 
 	def pin_read(self, bit):
-		if 11 <= bit <= 23:
-			pin_status = libmmio.mmiof_read(self.iomem, self.GPIO_IN)
-			if (pin_status & 1<<bit) != 0:
-				return True
-			else:
-				return False
+		 # TODO: how to return boolean from C?
+		if libmmio.pin_read(self.iomem, bit) == 1:
+			return True
 		else:
-			raise Exception("PIN number not in valid range.")
+			return False
 
 
 class I2C:
@@ -123,8 +87,8 @@ class I2C:
 		self.sleep = frequency
 		self.gpio.pin_set(self.sda_pin) 
 		self.gpio.pin_set(self.scl_pin) 
-		self.gpio.pin_direction(self.scl_pin, self.gpio.OUTPUT)
-		self.gpio.pin_direction(self.sda_pin, self.gpio.OUTPUT)
+		self.gpio.pin_direction(self.scl_pin, libmmio.OUTPUT)
+		self.gpio.pin_direction(self.sda_pin, libmmio.OUTPUT)
 
 
 	def start(self):
@@ -166,7 +130,7 @@ class I2C:
 			d = d << 1
 		
 		self.gpio.pin_clear(self.sda_pin)
-		self.gpio.pin_direction(self.sda_pin, self.gpio.INPUT)
+		self.gpio.pin_direction(self.sda_pin, libmmio.INPUT)
 		time.sleep(self.sleep)
 
 		self.gpio.pin_set(self.scl_pin)
@@ -175,7 +139,7 @@ class I2C:
 		ack = self.gpio.pin_read(self.sda_pin)
 		self.gpio.pin_clear(self.scl_pin)
 
-		self.gpio.pin_direction(self.sda_pin, self.gpio.OUTPUT)
+		self.gpio.pin_direction(self.sda_pin, libmmio.OUTPUT)
 		self.gpio.pin_clear(self.sda_pin)
 		time.sleep(self.sleep)
 		
@@ -184,7 +148,7 @@ class I2C:
 
 	def read(self, ack):
 		d = 0
-		self.gpio.pin_direction(self.sda_pin, self.gpio.INPUT)
+		self.gpio.pin_direction(self.sda_pin, libmmio.INPUT)
 
 		for x in xrange(8):
 			time.sleep(self.sleep)
@@ -196,7 +160,7 @@ class I2C:
 			time.sleep(self.sleep)
 			self.gpio.pin_clear(self.scl_pin)
 
-		self.gpio.pin_direction(self.sda_pin, self.gpio.OUTPUT)
+		self.gpio.pin_direction(self.sda_pin, libmmio.OUTPUT)
 		time.sleep(self.sleep)
 
 		if ack == True:
@@ -228,10 +192,10 @@ class SPI:
 		self.gpio.pin_set(self.CLOCK_pin) 
 		self.gpio.pin_set(self.SS_pin) 
 
-		self.gpio.pin_direction(self.MISO_pin, self.gpio.INPUT)
-		self.gpio.pin_direction(self.MOSI_pin, self.gpio.OUTPUT)
-		self.gpio.pin_direction(self.CLOCK_pin, self.gpio.OUTPUT)
-		self.gpio.pin_direction(self.SS_pin, self.gpio.OUTPUT)
+		self.gpio.pin_direction(self.MISO_pin, libmmio.INPUT)
+		self.gpio.pin_direction(self.MOSI_pin, libmmio.OUTPUT)
+		self.gpio.pin_direction(self.CLOCK_pin, libmmio.OUTPUT)
+		self.gpio.pin_direction(self.SS_pin, libmmio.OUTPUT)
 
 	def start(self):
 		self.gpio.pin_clear(self.SS_pin)
@@ -250,7 +214,7 @@ class SPI:
 		read = 0
 		for x in xrange(8):
 			time.sleep(self.sleep)
-			self.gpio.pin_direction(self.MOSI_pin, self.gpio.OUTPUT) # in this case it's single line comunication
+			self.gpio.pin_direction(self.MOSI_pin, libmmio.OUTPUT) # in this case it's single line comunication
 			time.sleep(self.sleep)
 
 			if data & 0x80:
@@ -264,7 +228,7 @@ class SPI:
 			self.gpio.pin_clear(self.CLOCK_pin) 
 			time.sleep(self.sleep)
 			
-			self.gpio.pin_direction(self.MISO_pin, self.gpio.INPUT) # in this case it's single line comunication
+			self.gpio.pin_direction(self.MISO_pin, libmmio.INPUT) # in this case it's single line comunication
 			time.sleep(self.sleep)
 			self.gpio.pin_set(self.CLOCK_pin) 			
 			time.sleep(self.sleep)
@@ -276,19 +240,6 @@ class SPI:
 		return read
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 class HD44780:  
 	def __init__(self, RS_pin=23, E_pin=22, DATA_pin=[21, 20, 19, 18]):
 		self.gpio = GPIO()
@@ -297,12 +248,12 @@ class HD44780:
 		self.E_pin=E_pin
 		self.DATA_pin=DATA_pin
 
-		self.gpio.pin_direction(self.RS_pin, self.gpio.OUTPUT)
-		self.gpio.pin_direction(self.E_pin, self.gpio.OUTPUT)
-		self.gpio.pin_direction(self.DATA_pin[0], self.gpio.OUTPUT)
-		self.gpio.pin_direction(self.DATA_pin[1], self.gpio.OUTPUT)
-		self.gpio.pin_direction(self.DATA_pin[2], self.gpio.OUTPUT)
-		self.gpio.pin_direction(self.DATA_pin[3], self.gpio.OUTPUT)
+		self.gpio.pin_direction(self.RS_pin, libmmio.OUTPUT)
+		self.gpio.pin_direction(self.E_pin, libmmio.OUTPUT)
+		self.gpio.pin_direction(self.DATA_pin[0], libmmio.OUTPUT)
+		self.gpio.pin_direction(self.DATA_pin[1], libmmio.OUTPUT)
+		self.gpio.pin_direction(self.DATA_pin[2], libmmio.OUTPUT)
+		self.gpio.pin_direction(self.DATA_pin[3], libmmio.OUTPUT)
 
 		self.clear()  
 

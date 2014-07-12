@@ -4,21 +4,25 @@ sys.path.append("/usr/sbin") # this is where binary library and python wrapper r
 import hwlibcara2
 
 
-'''
+
 # ---------
 # GPIO test
 # ---------
 gpio = hwlibcara2.GPIO()
-gpio.pin_direction(12, gpio.OUTPUT)
+gpio.pin_direction(12, 1)
 gpio.pin_set(12)
-print gpio.pin_read(11) # push button near USB connector
-'''
+while True:
+	gpio.pin_set(12)
+	print gpio.pin_read(11) # push button near USB connector
+	time.sleep(0.1)
+	gpio.pin_clear(12)
+	time.sleep(0.1)
 
 
 '''
 # --------
 # I2C test
-# PCF8575
+# detect devices on line
 # add 10k pullup on SDA pin
 # --------
 i2c = hwlibcara2.I2C()
@@ -33,7 +37,15 @@ for i in xrange(255):
 		else:
 			print "W 0x%02X" % i
 	i2c.stop()
+'''
 
+'''
+# --------
+# I2C test
+# PCF8575
+# add 10k pullup on SDA pin
+# --------
+i2c = hwlibcara2.I2C()
 
 # input
 i2c.start()
@@ -77,9 +89,11 @@ while True:
 	print "0x%02X" % d1
 '''
 
+'''
 # --------
 # SPI test
 # MLX90316
 # --------
 lcd = hwlibcara2.HD44780()
-lcd.message('OK')
+lcd.message('Python inside')
+'''

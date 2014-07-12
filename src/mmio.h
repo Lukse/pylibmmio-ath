@@ -19,6 +19,7 @@ struct mmio {
 	int		kmem;		/* 0 - /dev/mem, 1 - /dev/kmem */
 };
 
+/*
 int  mmio_map(struct mmio *io, unsigned long base, size_t length);
 void mmio_unmap(struct mmio *io);
 void mmio_hexdump(const struct mmio *io, size_t length, size_t flags);
@@ -28,5 +29,6 @@ void mmio_writel(const struct mmio *io, unsigned int offset, uint32_t value);
 
 void * test_get_buffer(void);
 void test_put_buffer(char * buffer);
+*/
 
 #endif //__MMIO_H__

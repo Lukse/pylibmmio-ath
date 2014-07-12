@@ -16,7 +16,25 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <time.h>
+#include <stdbool.h>
 
+#define GPIO_BASE					0x18040000 // GPIO base address
+#define GPIO_OE						0x00 		// General Purpose I/O Output Enable page 65
+#define GPIO_IN						0x04 		// General Purpose I/O Input Value page 65
+#define GPIO_OUT					0x08 		// General Purpose I/O Output Value page 65
+#define GPIO_SET					0x0C 		// General Purpose I/O Bit Set page 66
+#define GPIO_CLEAR					0x10 		// General Purpose I/O Per Bit Clear page 66
+#define GPIO_INT					0x14 		// General Purpose I/O Interrupt Enable page 66
+#define GPIO_INT_TYPE				0x18 		// General Purpose I/O Interrupt Type page 66
+#define GPIO_INT_POLARITY			0x1C 		// General Purpose I/O Interrupt Polarity page 66
+#define GPIO_INT_PENDING			0x20 		// General Purpose I/O Interrupt Pending page 67
+#define GPIO_INT_MASK				0x24 		// General Purpose I/O Interrupt Mask page 67
+#define GPIO_FUNCTION_1				0x28 		// General Purpose I/O Function page 67
+#define GPIO_IN_ETH_SWITCH_LED		0x2C 		// General Purpose I/O Input Value page 68
+#define GPIO_FUNCTION_2				0x30 		// Extended GPIO Function Control page 69
+
+#define INPUT 						0
+#define OUTPUT 						1
 
 static inline uint32_t readl(void *ptr)
 {
@@ -28,22 +46,6 @@ static inline void writel(uint32_t value, void *ptr)
 {
 	uint32_t *data = ptr;
 	*data = value;
-}
-
-uint32_t mmio_readl(const struct mmio *io, unsigned int offset)
-{
-	void *addr;
-
-	addr = io->iomem + io->offset + offset;
-	return readl(addr);
-}
-
-void mmio_writel(const struct mmio *io, unsigned int offset, uint32_t value)
-{
-	void *addr;
-
-	addr = io->iomem + io->offset + offset;
-	writel(value, addr);
 }
 
 static void mmio_normalize(struct mmio *mo)
@@ -93,99 +95,17 @@ static void mmio_init(struct mmio *mo)
 	close(iofd);
 }
 
-int mmio_map(struct mmio *io, unsigned long base, size_t length)
-{
-	memset(io, 0, sizeof(*io));
-
-	io->iobase = base;
-	io->offset = 0;
-	io->range  = length;
-
-	mmio_normalize(io);
-	mmio_init(io);
-
-	return 0;
-}
-
-void mmio_unmap(struct mmio *io)
-{
-	if (munmap(io->iomem, io->iosize))
-	{
-		exit(-1);
-		//die_errno("can't unmap @ %lX", io->iobase);
-	}
-
-	memset(io, 0, sizeof(*io));
-}
-
-void mmio_hexdump(const struct mmio *io, size_t length, size_t flags)
-{
-	__hexdump(io->iobase + io->offset,
-		  io->iomem + io->offset,
-		  length, flags);
-}
-
-unsigned long mmio_read(unsigned long iobase)
-{
-    struct mmio io;
-    uint32_t rdata;
-
-    mmio_map(&io, iobase, 0);
-    rdata = mmio_readl(&io, 0);
-    mmio_unmap(&io);
-    return rdata;
-}
-
-unsigned long mmio_write(unsigned long iobase, unsigned long data2)
-{
-    struct mmio io;
-    uint32_t data;
-
-    mmio_map(&io, iobase, 0);
-    mmio_writel(&io, 0, data2);
-    data = mmio_readl(&io, 0);
-    mmio_unmap(&io);
-    if (data != data2)
-        return -1;
-    else
-        return 0;
-}
-
-unsigned long mmio_write2(unsigned long iobase, unsigned long data2)
-{
-    struct mmio io;
-    uint32_t data;
-
-    mmio_map(&io, iobase, 0);
-    mmio_writel(&io, 0, data2);
-    data = mmio_readl(&io, 0);
-    mmio_unmap(&io);
-    if (data != data2)
-        return -1;
-    else
-       return 0;
-}
-
 void * mmiof_init(unsigned long iobase)
 {
 	struct 			mmio io1;
 	unsigned long 	offset;
-//	unsigned long 	iobase;
 	unsigned long 	range;
 	size_t			iosize;
 	void			*iomem;
-//	mmio_map(&io1, 0x18040000, 0);
-
-	//memset(io1, 0, sizeof(*io1));
-
-//	iobase = 0x18040000;
-	//offset = 0;
 	range  = 0;
 
-//	mmio_normalize(&io1);
 	int npages = 0;
 
-	//iobase += offset;
 	offset = iobase & (getpagesize() - 1);
 	iobase = iobase & ~(getpagesize() - 1);
 
@@ -193,7 +113,6 @@ void * mmiof_init(unsigned long iobase)
 	npages += 1;
 	iosize = npages * getpagesize();
 
-	//mmio_init(&io1);
 	char *device;
 	int iofd;
 
@@ -252,17 +171,50 @@ void mmiof_close(void * iomem)
 
 
 
-// -----------------------------------------
 
-/*
-i2c_init(SCL_pin, SDA_pin, frequency=50)
 
-i2c_start(addr | R/W-bit)
-i2c_stop()
+// --------------------------------------------------------------------------------
+// --------------------------- higher level functions -----------------------------
+// --------------------------------------------------------------------------------
 
-i2c_write(byte)
-i2c_read(count)
-*/
+
+// --------------------------------------------------------------------------------
+// GPIO functions
+
+void pin_set(void * iomem, unsigned int bit)
+{
+	mmiof_write(iomem, GPIO_SET, 1 << bit);
+}
+
+void pin_clear(void * iomem, unsigned int bit)
+{
+	mmiof_write(iomem, GPIO_CLEAR, 1 << bit);
+}
+
+unsigned int pin_read(void * iomem, unsigned int bit)
+{
+	return (mmiof_read(iomem, GPIO_IN) & (1 << bit)) >> bit;
+}
+
+void pin_direction(void * iomem, unsigned int bit, unsigned int direction)
+{
+	unsigned long int pin_status = mmiof_read(iomem, GPIO_OE);
+
+	if (direction == 1)
+		pin_status |= 1 << bit;
+	else
+		pin_status  &= ~(1 << bit);
+
+	mmiof_write(iomem, GPIO_OE, pin_status);
+}
+
+// --------------------------------------------------------------------------------
+// I2C functions
+
+
+
+
+
 
 
 
