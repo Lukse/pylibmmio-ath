@@ -19,6 +19,7 @@ print gpio.pin_read(11) # push button near USB connector
 # --------
 # I2C test
 # PCF8575
+# add 10k pullup on SDA pin
 # --------
 i2c = hwlibcara2.I2C()
 
@@ -33,18 +34,20 @@ for i in xrange(255):
 			print "W 0x%02X" % i
 	i2c.stop()
 
-#print
-#i2c.start()
-#i2c.write(0x41)
-#print i2c.read(True)
-#print i2c.read(False)
-#i2c.stop()
 
-#i2c.start()
-#i2c.write(64)
-#i2c.write(0x55)
-#i2c.write(0xAA)
-#i2c.stop()
+# input
+i2c.start()
+i2c.write(0x41)
+print i2c.read(True)
+print i2c.read(False)
+i2c.stop()
+
+# output
+i2c.start()
+i2c.write(0x40)
+i2c.write(0x55)
+i2c.write(0xAA)
+i2c.stop()
 '''
 
 
