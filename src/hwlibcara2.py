@@ -274,3 +274,99 @@ class SPI:
 				read = read | 1
 
 		return read
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+class HD44780:  
+	def __init__(self, RS_pin=23, E_pin=22, DATA_pin=[21, 20, 19, 18]):
+		self.gpio = GPIO()
+
+		self.RS_pin=RS_pin
+		self.E_pin=E_pin
+		self.DATA_pin=DATA_pin
+
+		self.gpio.pin_direction(self.RS_pin, self.gpio.OUTPUT)
+		self.gpio.pin_direction(self.E_pin, self.gpio.OUTPUT)
+		self.gpio.pin_direction(self.DATA_pin[0], self.gpio.OUTPUT)
+		self.gpio.pin_direction(self.DATA_pin[1], self.gpio.OUTPUT)
+		self.gpio.pin_direction(self.DATA_pin[2], self.gpio.OUTPUT)
+		self.gpio.pin_direction(self.DATA_pin[3], self.gpio.OUTPUT)
+
+		self.clear()  
+
+	def pin(self, pin, value):
+		if value == True:
+			self.gpio.pin_set(pin)
+		else:
+			self.gpio.pin_clear(pin)
+
+
+	def clear(self):  
+		""" Blank / Reset LCD """  
+
+		self.cmd(0x33) # $33 8-bit mode  
+		self.cmd(0x32) # $32 8-bit mode  
+		self.cmd(0x28) # $28 8-bit mode  
+		self.cmd(0x0C) # $0C 8-bit mode  
+		self.cmd(0x06) # $06 8-bit mode  
+		self.cmd(0x01) # $01 8-bit mode  
+
+	def cmd(self, bits, char_mode=False):  
+		""" Send command to LCD """  
+
+		time.sleep(0.001)  
+		bits=bin(bits)[2:].zfill(8)  
+
+		#gpio.write(self.RS_pin, char_mode)
+		self.pin(self.RS_pin, char_mode)
+
+		for pin in self.DATA_pin:  
+			#gpio.write(pin, False)  
+			self.pin(pin, False)
+
+		for i in range(4):  
+			if bits[i] == "1":  
+				#gpio.write(self.DATA_pin[::-1][i], True)  
+				self.pin(self.DATA_pin[::-1][i], True)
+
+		#gpio.write(self.E_pin, True)  
+		self.pin(self.E_pin, True)
+		
+		#gpio.write(self.E_pin, False)  
+		self.pin(self.E_pin, False)
+
+		for pin in self.DATA_pin:  
+			#gpio.write(pin, False)  
+			self.pin(pin, False)
+
+		for i in range(4,8):  
+			if bits[i] == "1":  
+				#gpio.write(self.DATA_pin[::-1][i-4], True)  
+				self.pin(self.DATA_pin[::-1][i-4], True)  
+
+		#gpio.write(self.E_pin, True)  
+		self.pin(self.E_pin, True)
+		#gpio.write(self.E_pin, False)  
+		self.pin(self.E_pin, False)  
+
+	def message(self, text):  
+		""" Send string to LCD. Newline wraps to second line"""  
+
+		for char in text:  
+			if char == '\n':  
+				self.cmd(0xC0) # next line  
+			else:  
+				self.cmd(ord(char),True)  
+  

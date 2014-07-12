@@ -50,7 +50,7 @@ i2c.write(0xAA)
 i2c.stop()
 '''
 
-
+'''
 # --------
 # SPI test
 # MLX90316
@@ -71,4 +71,15 @@ while True:
 	spi.transfer(0xFF)
 	spi.stop()
 
-	print "%3.2f" % ((d0*0x100 + d1) * 359.999 / 0xFFFF)
+	#print "%3.2f" % (((d0*0x100 + d1)&0xFFFC >> 2) * 359.999 / 0x3FFF)
+	#print "0x%04X" % (((d0*0x100 | d1) & 0xFFFC) >> 2) 
+	print "0x%02X" % d0, 
+	print "0x%02X" % d1
+'''
+
+# --------
+# SPI test
+# MLX90316
+# --------
+lcd = hwlibcara2.HD44780()
+lcd.message('OK')
