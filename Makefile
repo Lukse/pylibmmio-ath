@@ -51,6 +51,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/sbin
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/_libmmio.so $(1)/usr/sbin/_libmmio.so
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/libmmio.py $(1)/usr/sbin/libmmio.py
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/hwlibcara2.py $(1)/usr/sbin/hwlibcara2.py
 	
 	# TODO: remove test program from package
 	mkdir $(1)/test
