@@ -13,7 +13,7 @@
 # sudo picocom -b 115200 /dev/ttyUSB0
 
 # Carambola: get packet
-# cd /tmp; rm pymmiolib*; wget http://192.168.0.63:8000/pymmiolib-ath_1_ar71xx.ipk; opkg install pymmiolib-ath_1_ar71xx.ipk
+# cd /tmp; rm pymmiolib*; wget http://192.168.0.63:8000/pymmiolib-ath_1_ar71xx.ipk; opkg install pymmiolib-ath_1_ar71xx.ipk; cd /test/
 
 
 include $(TOPDIR)/rules.mk

@@ -249,6 +249,31 @@ void mmiof_close(void * iomem)
 }
 
 
+
+
+
+// -----------------------------------------
+
+/*
+i2c_init(SCL_pin, SDA_pin, frequency=50)
+
+i2c_start(addr | R/W-bit)
+i2c_stop()
+
+i2c_write(byte)
+i2c_read(count)
+*/
+
+
+
+
+
+
+
+
+
+
+
 void * test_get_buffer(void)
 {	
 	return "1234567890";
@@ -258,4 +283,5 @@ void test_put_buffer(char * buffer)
 {
 	printf("C prints: %s\n", buffer);
 }
+
 

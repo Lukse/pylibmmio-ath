@@ -36,7 +36,7 @@ Carambola2 motherboard
 
 import sys
 import time
-sys.path.append("/usr/sbin")
+sys.path.append("/usr/sbin") # this is where binary library and python wrapper resides
 import libmmio
 
 class CARAMBOLA2_GPIO:
@@ -56,8 +56,8 @@ class CARAMBOLA2_GPIO:
 		self.GPIO_IN_ETH_SWITCH_LED		= 0x2C 		# General Purpose I/O Input Value page 68
 		self.GPIO_FUNCTION_2			= 0x30 		# Extended GPIO Function Control page 69
 
-		INPUT = 0
-		OUTPUT = 1
+		self.INPUT = 0
+		self.OUTPUT = 1
 
 		self.iomem = None
 
@@ -72,6 +72,7 @@ class CARAMBOLA2_GPIO:
 			pin_status  &= ~(1 << pin);
 
 		libmmio.mmiof_write(self.iomem, self.GPIO_OE, pin_status) 		# Set gpio direction
+		libmmio.mmiof_write(self.iomem, self.GPIO_FUNCTION_2, 1<<8 | 1<<9) 	# Disables the WPS input function on GPIO12, Disables Jumpstart input function on GPIO11
 
 
 	def pin_direction(self, bit, direction):
@@ -125,41 +126,151 @@ class CARAMBOLA2_GPIO:
 
 gpio = CARAMBOLA2_GPIO()
 
-gpio.pin_direction(11, 1)
+gpio.pin_direction(12, gpio.OUTPUT)
 
+'''
 while True:
-	gpio.pin_set(11) 
+	gpio.pin_set(12) 
 	time.sleep(0.1)
 
-	gpio.pin_clear(11) 
+	gpio.pin_clear(12) 
 	time.sleep(0.1)
 
-	print gpio.pin_read(12)
-
-
+	print gpio.pin_read(11)
 '''
 
 
-ALL_GPIO = 1<<11 | 1<<12 | 1<<18 | 1<<19 | 1<<20 | 1<<21 | 1<<22 | 1<<23
 
 
-print 'GPIO blinking'
 
-iomem = libmmio.mmiof_init(GPIO_BASE) 				# GPIO base address
-libmmio.mmiof_write(iomem, GPIO_OE, ALL_GPIO) 		# Set gpio direction
 
-libmmio.mmiof_write(iomem, GPIO_FUNCTION_2, 1<<8 | 1<<9) 	# Disables the WPS input function on GPIO12, Disables Jumpstart input function on GPIO11
 
-print 'GPIO_FUNCTION_2: ', libmmio.mmiof_read(iomem, GPIO_FUNCTION_2)
 
-print "Python prints", libmmio.cdata(libmmio.test_get_buffer(), 6)
-libmmio.test_put_buffer('9876543210')
 
-while True:
-	libmmio.mmiof_write(iomem, GPIO_SET, ALL_GPIO) 	# Set GPIO registers
-	time.sleep(0.1)
+# =================================
 
-	libmmio.mmiof_write(iomem, GPIO_CLEAR, ALL_GPIO) 	# Clear GPIO registers
-	time.sleep(0.1) 
+class I2C:
+	def __init__(self, gpio, scl_pin=18, sda_pin=19, frequency=0):
+		self.gpio = gpio
+		self.scl_pin = scl_pin
+		self.sda_pin = sda_pin
+		self.sleep = frequency
+		gpio.pin_set(self.sda_pin) 
+		gpio.pin_set(self.scl_pin) 
+		self.gpio.pin_direction(self.scl_pin, gpio.OUTPUT)
+		self.gpio.pin_direction(self.sda_pin, gpio.OUTPUT)
+		#time.sleep(0.2)
 
-'''
+
+	def start(self):
+		gpio.pin_set(self.sda_pin) 
+		time.sleep(self.sleep)
+
+		gpio.pin_set(self.scl_pin) 
+		time.sleep(self.sleep)
+		
+		gpio.pin_clear(self.sda_pin) 
+		time.sleep(self.sleep)
+		
+		gpio.pin_clear(self.scl_pin) 
+		time.sleep(self.sleep)
+
+
+	def stop(self):
+		gpio.pin_clear(self.sda_pin)
+		time.sleep(self.sleep)
+		
+		gpio.pin_set(self.scl_pin)
+		time.sleep(self.sleep)
+
+		gpio.pin_set(self.sda_pin)
+		time.sleep(self.sleep)
+
+
+	def write(self, d):
+		for x in xrange(8):
+			if d & 0x80:
+				gpio.pin_set(self.sda_pin) 
+			else:
+				gpio.pin_clear(self.sda_pin) 
+			
+			gpio.pin_set(self.scl_pin)
+			time.sleep(self.sleep)
+			gpio.pin_clear(self.scl_pin)
+			time.sleep(self.sleep)
+			d = d << 1
+		
+		gpio.pin_clear(self.sda_pin)
+		self.gpio.pin_direction(self.sda_pin, gpio.INPUT)
+		time.sleep(self.sleep)
+
+		gpio.pin_set(self.scl_pin)
+		time.sleep(self.sleep)
+
+		ack = self.gpio.pin_read(self.sda_pin)
+		gpio.pin_clear(self.scl_pin)
+
+		self.gpio.pin_direction(self.sda_pin, gpio.OUTPUT)
+		gpio.pin_clear(self.sda_pin)
+		time.sleep(self.sleep)
+		
+		return ack
+
+
+	def read(self, ack):
+		d = 0
+		self.gpio.pin_direction(self.sda_pin, gpio.INPUT)
+
+		for x in xrange(8):
+			time.sleep(self.sleep)
+			gpio.pin_set(self.scl_pin)
+			time.sleep(self.sleep)
+			d = d << 1
+			if(self.gpio.pin_read(self.sda_pin)):
+				d = d | 1
+			time.sleep(self.sleep)
+			gpio.pin_clear(self.scl_pin)
+
+		self.gpio.pin_direction(self.sda_pin, gpio.OUTPUT)
+		time.sleep(self.sleep)
+
+		if ack == True:
+			gpio.pin_clear(self.sda_pin)
+		else:
+			gpio.pin_set(self.sda_pin)
+		time.sleep(self.sleep)
+
+		gpio.pin_set(self.scl_pin)
+		time.sleep(self.sleep)
+
+		gpio.pin_clear(self.scl_pin)
+		time.sleep(self.sleep)
+		return d
+
+
+i2c = I2C(gpio, frequency=0)
+
+# scan
+for i in xrange(255):
+	i2c.start()
+	ack = i2c.write(i)
+	if not ack:
+		if i & 0x01:
+			print "R 0x%02X" % i
+		else:
+			print "W 0x%02X" % i
+	i2c.stop()
+
+
+print
+i2c.start()
+i2c.write(0x41)
+print i2c.read(True)
+print i2c.read(False)
+i2c.stop()
+
+#i2c.start()
+#i2c.write(64)
+#i2c.write(0x55)
+#i2c.write(0xAA)
+#i2c.stop()
